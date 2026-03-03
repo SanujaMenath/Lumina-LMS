@@ -24,7 +24,7 @@ type CourseResponse = {
 
 
 export const fetchEnrolledCourses = async (studentId: string): Promise<EnrolledCourse[]> => {
-    const res = await api.get<CourseResponse[]>(`courses/student/${studentId}/courses`);
+    const res = await api.get<CourseResponse[]>(`courses/${studentId}/courses`);
     
     return res.data.map((c) => ({
       id: c.course_id,

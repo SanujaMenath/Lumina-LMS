@@ -75,19 +75,9 @@ def get_students(course_id: str):
     return CourseService.get_students_in_course(course_id)
 
 
-@router.get("/student/{student_id}/courses", response_model=List[StudentEnrolledCourseResponse])
+@router.get("/{student_id}/courses", response_model=List[StudentEnrolledCourseResponse])
 def get_student_courses(student_id: str):
     return CourseService.get_courses_of_student(student_id)
 
-@router.post("/{course_id}/assign-lecturer")
-def assign_lecturer(
-    course_id: str,
-    payload: dict,
-    current_user=Depends(get_current_user)
-):
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
 
-    lecturer_id = payload.get("lecturer_id")
-    return CourseService.assign_lecturer(course_id, lecturer_id)
 
