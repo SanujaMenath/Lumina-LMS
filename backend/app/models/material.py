@@ -6,10 +6,10 @@ from app.models.object_id import PyObjectId
 class MaterialCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
-    course_id: PyObjectId
-    material_type: str  # e.g., "PDF", "Video", "Assignment", "Slides"
-    file_url: str       # URL from your storage provider (S3, Cloudinary, etc.)
-    file_size: Optional[int] = None  # Size in bytes
+    course_id: str 
+    material_type: str  
+    file_url: str     
+    file_size: Optional[int] = None 
     tags: List[str] = []
 
 class MaterialUpdate(BaseModel):

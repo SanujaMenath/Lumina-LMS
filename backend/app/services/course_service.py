@@ -2,7 +2,7 @@
 from app.database.connection import get_database
 from bson import ObjectId
 from datetime import datetime, timezone
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 
 db = get_database()
 courses_col = db["courses"]
@@ -46,34 +46,72 @@ class CourseService:
 
     @staticmethod
     def list_courses_for_user(user):
-        # 1. Admin sees everything
         if user["role"] == "admin":
             return CourseService.list_courses()
 
-        # 2. Lecturer sees only their assigned courses
         elif user["role"] == "lecturer":
             docs = courses_col.find({"lecturer_id": ObjectId(user["id"])})
             out = []
             for d in docs:
-                # Convert the main _id
                 d["id"] = str(d["_id"])
                 d["course_id"] = str(d["_id"])
                 d.pop("_id", None)
                 
-                # Convert inner ObjectIds to Strings
                 if "lecturer_id" in d and d["lecturer_id"]:
                     d["lecturer_id"] = str(d["lecturer_id"])
                 
-                if "department" in d and d["department"]:
-                    d["department"] = str(d["department"])
+                course_dept_name = d.get("department")
+                if course_dept_name:
+                    d["department"] = str(course_dept_name)
+
+                # --- NEW FIX: Reverse lookup the Department ID ---
+                # Default match conditions (matching the exact string)
+                dept_match_conditions = [
+                    {"department": course_dept_name},
+                    {"department_id": course_dept_name}
+                ]
                 
-                enrolled_count = course_students_col.count_documents({"course_id": ObjectId(d["id"])})
+                # Try to find this department in the DB to get its ObjectId string
+                dept_doc = db["departments"].find_one({"name": course_dept_name})
+                if dept_doc:
+                    dept_id_str = str(dept_doc["_id"])
+                    # Add the ID to our match conditions
+                    dept_match_conditions.extend([
+                        {"department": dept_id_str},
+                        {"department_id": dept_id_str}
+                    ])
+                # ------------------------------------------------
+
+                try:
+                    course_sem_int = int(d.get("semester", 1))
+                except (ValueError, TypeError):
+                    course_sem_int = 1
+
+                # We use $and to combine the department match AND the semester match
+                student_query = {
+                    "$and": [
+                        {"$or": dept_match_conditions},
+                        {"$or": [
+                            {"semester": {"$gte": course_sem_int}},
+                            {"semester": {"$gte": str(course_sem_int)}} # Catch string "1"
+                        ]}
+                    ]
+                }
+                
+                # Check both 'students' collection AND 'users' collection 
+                # (depending on where your student registration logic saved them)
+                enrolled_count = db["students"].count_documents(student_query)
+                
+                if enrolled_count == 0:
+                    # Fallback just in case student metadata was saved directly in the 'users' collection
+                    fallback_query = {"role": "student", **student_query}
+                    enrolled_count = db["users"].count_documents(fallback_query)
+
                 d["enrolled_students"] = enrolled_count
                 
                 out.append(d)
             return out
 
-        # 3. Student uses the smart auto-enrollment pipeline
         elif user["role"] == "student":
             return CourseService.get_courses_of_student(user["id"])
             

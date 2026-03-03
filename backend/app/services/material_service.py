@@ -9,9 +9,11 @@ class MaterialService:
 
     @staticmethod
     def create_material(data: MaterialCreate, lecturer_id: str):
-        material_doc = data.model_dump() # dict() in older pydantic
+        material_doc = data.model_dump()
+        
         material_doc["lecturer_id"] = ObjectId(lecturer_id)
-        material_doc["course_id"] = ObjectId(data.course_id)
+        material_doc["course_id"] = ObjectId(data.course_id) 
+        
         material_doc["created_at"] = datetime.now(timezone.utc)
         material_doc["updated_at"] = datetime.now(timezone.utc)
 
@@ -22,14 +24,28 @@ class MaterialService:
     def get_by_id(material_id: str):
         material = db["materials"].find_one({"_id": ObjectId(material_id)})
         if material:
-            material["_id"] = material["_id"] # Pydantic alias handles conversion
+            material["_id"] = material["_id"] 
         return material
 
     @staticmethod
     def get_by_course(course_id: str):
-        # Returns all materials for a specific course
+  
         materials = list(db["materials"].find({"course_id": ObjectId(course_id)}))
-        return materials
+        
+        out = []
+        for m in materials:
+            m["id"] = str(m["_id"])
+            m.pop("_id", None)
+            
+            if "course_id" in m and m["course_id"]:
+                m["course_id"] = str(m["course_id"])
+                
+            if "lecturer_id" in m and m["lecturer_id"]:
+                m["lecturer_id"] = str(m["lecturer_id"])
+                
+            out.append(m)
+            
+        return out
 
     @staticmethod
     def update(material_id: str, data: MaterialUpdate):

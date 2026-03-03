@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Search,
@@ -8,22 +8,34 @@ import {
   FileVideo,
   FileCode,
   File as FileIcon,
+  Loader2,
+  Edit2, // NEW: Import Edit Icon
 } from "lucide-react";
-import UploadModal, { type UploadData } from "./components/UploadModal";
+import MaterialModal, { type CourseOption } from "./components/MaterialModal"; // NEW: Changed Import
+import { useAuth } from "../../context/AuthContext";
+import { fetchLecturerCourses } from "./services/lecturerCourseService";
+import {
+  fetchMaterialsByCourse,
+  uploadMaterialService,
+  updateMaterialService, 
+  deleteMaterialService,
+  type MaterialDTO,
+} from "./services/materialService";
+import { toast } from "react-hot-toast";
 
-// 1. Define the Interface for TypeScript
-interface Material {
-  _id: string;
-  title: string;
-  course: string;
-  type: string;
-  date: string;
+interface DisplayMaterial extends MaterialDTO {
+  course_name: string;
 }
 
 const MaterialManagement: React.FC = () => {
-  // 2. Explicitly type the state
-  const [materials, setMaterials] = useState<Material[]>([]);
+  const { user } = useAuth();
+
+  const [materials, setMaterials] = useState<DisplayMaterial[]>([]);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMaterial, setEditingMaterial] = useState<DisplayMaterial | null>(null); // NEW: State for Edit
   const [searchTerm, setSearchTerm] = useState("");
 
   const getFileIcon = (type: string) => {
@@ -31,159 +43,236 @@ const MaterialManagement: React.FC = () => {
     if (t.includes("pdf")) return <FileText className="text-red-500" />;
     if (t.includes("video") || t.includes("mp4"))
       return <FileVideo className="text-blue-500" />;
-    if (t.includes("code") || t.includes("zip"))
+    if (t.includes("code") || t.includes("zip") || t.includes("archive"))
       return <FileCode className="text-amber-500" />;
-    return <FileIcon className="text-gray-500" />;
+    return <FileIcon className="text-indigo-500" />;
   };
 
-  const handleUpload = (data: UploadData) => {
-    // Logic to send data to FastAPI goes here
-    console.log("Data received from modal:", data);
+  const loadData = useCallback(async () => {
+    // ... (Keep existing loadData logic exactly as is) ...
+    if (!user?.id) return;
 
-    // For now, let's update the UI locally
-    const newEntry: Material = {
-      _id: Date.now().toString(),
-      title: data.title,
-      course: data.course_id, // You might want to map the ID to a Name later
-      type: data.material_type,
-      date: new Date().toISOString().split("T")[0],
-    };
-    setMaterials((prev) => [newEntry, ...prev]);
-  };
+    try {
+      setLoading(true);
+
+      const myCourses = await fetchLecturerCourses();
+
+      const courseOptions = myCourses.map((c) => ({
+        id: c.course_id || c.id,
+        name: c.course_name,
+      }));
+      setCourses(courseOptions);
+
+      const materialPromises = myCourses.map((c) =>
+        fetchMaterialsByCourse(c.course_id || c.id)
+      );
+      const materialsArrays = await Promise.all(materialPromises);
+
+      const combinedMaterials: DisplayMaterial[] = materialsArrays
+        .flat()
+        .map((mat) => {
+          const courseMatch = myCourses.find(
+            (c) => (c.course_id || c.id) === mat.course_id
+          );
+          return {
+            ...mat,
+            course_name: courseMatch ? courseMatch.course_name : "Unknown Course",
+          };
+        });
+
+      combinedMaterials.sort(
+        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+      );
+
+      setMaterials(combinedMaterials);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load materials.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
-    // Simulating an API call to avoid the "synchronous setState" warning
-    const fetchData = async () => {
-      const mockData: Material[] = [
-        {
-          _id: "1",
-          title: "Introduction to React.pdf",
-          course: "Web Dev 101",
-          type: "PDF",
-          date: "2024-03-15",
-        },
-        {
-          _id: "2",
-          title: "Database Schema Design.mp4",
-          course: "Database Systems",
-          type: "Video",
-          date: "2024-03-18",
-        },
-        {
-          _id: "3",
-          title: "API_Documentation.zip",
-          course: "Backend Engineering",
-          type: "Archive",
-          date: "2024-03-20",
-        },
-      ];
-      setMaterials(mockData);
-    };
+    loadData();
+  }, [loadData]);
 
-    fetchData();
-  }, []);
+  // NEW: Unified Save Handler
+  const handleSave = async (payload: FormData | Partial<MaterialDTO>) => {
+    if (!user?.id) return;
+    try {
+      if (editingMaterial) {
+        // Handle Update (Sending JSON metadata)
+        const id = editingMaterial._id || editingMaterial.id;
+        if (!id) throw new Error("Material ID missing");
+        
+        await updateMaterialService(id, payload as Partial<MaterialDTO>);
+        toast.success("Material updated successfully!");
+      } else {
+        // Handle Create (Sending FormData)
+        await uploadMaterialService(payload as FormData, user.id);
+        toast.success("Material uploaded successfully!");
+      }
+      setIsModalOpen(false);
+      setEditingMaterial(null);
+      loadData(); 
+    } catch (error) {
+      console.error(error);
+      toast.error(editingMaterial ? "Failed to update material." : "Failed to upload material.");
+    }
+  };
 
-  // 3. Simple filter logic so 'searchTerm' is "used"
-  const filteredMaterials = materials.filter((m) =>
-    m.title.toLowerCase().includes(searchTerm.toLowerCase()),
+  const handleDelete = async (id: string | undefined) => {
+    // ... (Keep existing handleDelete logic exactly as is) ...
+    if (!id) return;
+    if (window.confirm("Are you sure you want to delete this material?")) {
+      try {
+        await deleteMaterialService(id);
+        toast.success("Material deleted.");
+        setMaterials((prev) => prev.filter((m) => (m._id || m.id) !== id));
+      } catch {
+        toast.error("Failed to delete material.");
+      }
+    }
+  };
+
+  const filteredMaterials = materials.filter(
+    (m) =>
+      m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.course_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // ... (Keep existing Loading screen) ...
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+        <p className="text-gray-500 font-bold animate-pulse">Loading course resources...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Material Management
-          </h1>
-          <p className="text-sm text-gray-500">
-            Upload and manage course resources.
-          </p>
+          <h1 className="text-3xl font-extrabold text-gray-900">Material Management</h1>
+          <p className="text-gray-500 font-medium mt-1">Upload and manage course resources.</p>
         </div>
         <button
-          type="button"
-          onClick={() => setIsModalOpen(true)} // Modal toggle used here
-          className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-all shadow-md shadow-indigo-100"
+          onClick={() => {
+            setEditingMaterial(null); // Ensure clean state for new upload
+            setIsModalOpen(true);
+          }}
+          className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 active:scale-95"
         >
-          <Plus size={18} />
-          Upload Material
+          <Plus size={18} /> Upload Material
         </button>
       </div>
-      <UploadModal
+
+      {/* NEW: Updated Modal Implementation */}
+      <MaterialModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onUpload={handleUpload}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingMaterial(null);
+        }}
+        initialData={editingMaterial}
+        onSave={handleSave}
+        courses={courses}
       />
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full md:w-96">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            size={18}
-          />
+
+      {/* ... (Keep existing Search UI) ... */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+        <div className="relative w-full md:max-w-md group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
           <input
             type="text"
-            placeholder="Search materials..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            placeholder="Search materials or courses..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-sm"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-gray-50/50 border-b border-gray-100">
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                File Name
-              </th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                Course
-              </th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                Upload Date
-              </th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {filteredMaterials.map((item) => (
-              <tr
-                key={item._id}
-                className="hover:bg-gray-50/50 transition-colors group"
-              >
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gray-100 rounded-lg group-hover:bg-white transition-colors">
-                      {getFileIcon(item.type)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {item.title}
-                      </p>
-                      <p className="text-xs text-gray-500">{item.type}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                  {item.course}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">{item.date}</td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
-                      <Download size={16} />
-                    </button>
-                    <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
+      {/* Table */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-50 text-gray-400 text-[11px] uppercase tracking-widest font-bold">
+                <th className="px-6 py-5">File Details</th>
+                <th className="px-6 py-5">Course</th>
+                <th className="px-6 py-5">Uploaded On</th>
+                <th className="px-6 py-5 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredMaterials.length > 0 ? (
+                filteredMaterials.map((item) => (
+                  <tr key={item._id || item.id} className="hover:bg-gray-50/50 transition-colors group">
+                    {/* ... (Keep existing Name/Course/Date Columns) ... */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-gray-100 rounded-xl group-hover:bg-white transition-colors shadow-sm">
+                          {getFileIcon(item.material_type)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{item.title}</p>
+                          <p className="text-xs font-semibold text-gray-400 mt-0.5 uppercase tracking-wider">{item.material_type}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg">{item.course_name}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-500">
+                      {item.created_at ? new Date(item.created_at).toLocaleDateString() : "Just now"}
+                    </td>
+
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-1">
+                        {/* Download */}
+                        <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Download">
+                          <Download size={18} />
+                        </button>
+
+                        {/* NEW: Edit Button */}
+                        <button
+                          onClick={() => {
+                            setEditingMaterial(item);
+                            setIsModalOpen(true);
+                          }}
+                          className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                          title="Edit Metadata"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+
+                        {/* Delete */}
+                        <button onClick={() => handleDelete(item._id || item.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                // ... Empty State ...
+                <tr>
+                  <td colSpan={4} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <div className="p-4 bg-gray-50 rounded-full"><FileIcon size={32} className="text-gray-300" /></div>
+                      <p className="text-gray-500 font-bold">No materials found.</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
