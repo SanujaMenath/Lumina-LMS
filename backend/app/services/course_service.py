@@ -80,7 +80,6 @@ class CourseService:
         if not ObjectId.is_valid(course_id):
             raise HTTPException(status_code=400, detail="Invalid course id")
             
-        # CHANGE .dict() to .model_dump()
         update_doc = {k: v for k, v in data.model_dump(exclude_unset=True).items()}
         
         if not update_doc:
@@ -244,81 +243,117 @@ class CourseService:
         if not ObjectId.is_valid(student_id):
             raise HTTPException(status_code=400, detail="Invalid student id")
 
+        # 1. Fetch from the students collection using user_id
+        student_record = db["students"].find_one({"user_id": ObjectId(student_id)})
+        
+        if not student_record:
+            student_record = db["users"].find_one({"_id": ObjectId(student_id)})
+
+        if not student_record:
+            raise HTTPException(status_code=404, detail="Student record not found")
+
+        # 2. Get the department ID
+        dept_identifier = student_record.get("department") or student_record.get("department_id")
+        
+        if not dept_identifier:
+            return []
+
+        # 3. Convert that ID into the Department Name 
+        student_dept_name = dept_identifier
+        
+        if ObjectId.is_valid(str(dept_identifier)):
+            # fetch the real name from the departments collection
+            dept_doc = db["departments"].find_one({"_id": ObjectId(str(dept_identifier))})
+            if dept_doc and "name" in dept_doc:
+                student_dept_name = dept_doc["name"]
+
+        # 4. Get Semester safely
+        try:
+            student_semester_int = int(student_record.get("semester", 1))
+        except (ValueError, TypeError):
+            student_semester_int = 1
+
+        student_semester_str = str(student_semester_int)
+
+        # 5. Execute Pipeline matching the NAME
         pipeline = [
-            # 1. Find the student's enrollments
-            {"$match": {"student_id": ObjectId(student_id)}},
-            
-            # 2. Join the course details
             {
-                "$lookup": {
-                    "from": "courses",
-                    "localField": "course_id",
-                    "foreignField": "_id",
-                    "as": "course_info",
+                "$match": {
+                    "$and": [
+                        # Match the resolved Department Name
+                        {
+                            "$or": [
+                                {"department": student_dept_name},
+                                {"department": dept_identifier} # fallback
+                            ]
+                        },
+                        # Match Semester
+                        {
+                            "$or": [
+                                {"semester": {"$lte": student_semester_int}},
+                                {"semester": {"$lte": student_semester_str}}
+                            ]
+                        }
+                    ]
                 }
             },
-            {"$unwind": "$course_info"},
-            
-            # 3. Join the lecturer details
             {
                 "$lookup": {
                     "from": "users",
-                    "localField": "course_info.lecturer_id",
+                    "localField": "lecturer_id",
                     "foreignField": "_id",
                     "as": "lecturer_info",
                 }
             },
-            # used preserveNullAndEmptyArrays, so the course still shows up 
-            # even if an admin hasn't assigned a lecturer yet!
             {
                 "$unwind": {
                     "path": "$lecturer_info",
                     "preserveNullAndEmptyArrays": True 
                 }
             },
-            
-            # 4. final output
+            {
+                "$lookup": {
+                    "from": "course_students",
+                    "let": {"c_id": "$_id"},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$and": [
+                                        {"$eq": ["$course_id", "$$c_id"]},
+                                        {"$eq": ["$student_id", ObjectId(student_id)]}
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    "as": "enrollment_data"
+                }
+            },
+            {
+                "$unwind": {
+                    "path": "$enrollment_data",
+                    "preserveNullAndEmptyArrays": True
+                }
+            },
             {
                 "$project": {
                     "_id": 0,
-                    "course_id": {"$toString": "$course_info._id"},
-                    "course_code": "$course_info.course_code",
-                    "course_name": "$course_info.course_name",
-                    "description": "$course_info.description",
-                    "credits": "$course_info.credits",
-                    "semester": "$course_info.semester",
-                    
-                    # Fallback to "TBA" if lecturer_info is null
+                    "course_id": {"$toString": "$_id"},
+                    "course_code": "$course_code",
+                    "course_name": "$course_name",
+                    "description": "$description",
+                    "credits": "$credits",
+                    "semester": "$semester",
                     "lecturer_name": {"$ifNull": ["$lecturer_info.full_name", "TBA"]},
-                    
-                    # If they don't exist yet, it defaults to 0 and "Never".
-                    "progress": {"$ifNull": ["$progress", 0]},
-                    "last_accessed": {"$ifNull": ["$last_accessed", "Never"]},
+                    "progress": {"$ifNull": ["$enrollment_data.progress", 0]},
+                    "last_accessed": {"$ifNull": ["$enrollment_data.last_accessed", "Never"]},
                 }
             },
         ]
 
-        results = list(course_students_col.aggregate(pipeline))
-
-        return results
+        return list(courses_col.aggregate(pipeline))
     
-    @staticmethod
-    def assign_lecturer(course_id: str, lecturer_id: str):
-        if not ObjectId.is_valid(course_id) or not ObjectId.is_valid(lecturer_id):
-            raise HTTPException(status_code=400, detail="Invalid IDs")
-
-        lecturer = db["users"].find_one({"_id": ObjectId(lecturer_id)})
-        if not lecturer or lecturer.get("role") != "lecturer":
-            raise HTTPException(status_code=400, detail="Invalid lecturer")
-
-        res = courses_col.update_one(
-            {"_id": ObjectId(course_id)},
-            {"$set": {"lecturer_id": ObjectId(lecturer_id)}}
-        )
-
-        if res.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Course not found")
-
-        return {"message": "Lecturer assigned"}
+ 
 
     
