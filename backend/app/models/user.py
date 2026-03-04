@@ -17,7 +17,6 @@ class LecturerCreate(BaseUser):
 
 
 class StudentCreate(BaseUser):
-    student_id: str
     department: str
     year: int
     semester: int

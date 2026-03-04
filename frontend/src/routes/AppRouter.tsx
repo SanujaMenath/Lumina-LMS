@@ -22,6 +22,8 @@ import DepartmentPage from "../pages/admin/DepartmentPage";
 import LecturerCoursesPage from "../pages/lecturer/LecturerCoursesPage";
 import StudentCourseMaterials from "../pages/student/StudentCourseMaterials";
 import StudentAssessmentView from "../pages/student/StudentAssessmentView";
+import LecturerGradingView from "../pages/lecturer/LecturerGradingView";
+import LecturerAssessmentsPage from "../pages/lecturer/LecturerAssessmentsPage";
 
 const AppRouter = () => {
   return (
@@ -60,6 +62,8 @@ const AppRouter = () => {
           <Route path="courses" element={<LecturerCoursesPage />} />
           <Route path="materials" element={<MaterialManagement />} />
           <Route path="assessment-creation" element={<AssessmentCreation />} />
+          <Route path="assessments" element={<LecturerAssessmentsPage />} />
+          <Route path="assessments/:assessmentId/grade" element={<LecturerGradingView />} />
         </Route>
 
         <Route

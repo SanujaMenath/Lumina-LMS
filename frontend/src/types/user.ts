@@ -31,7 +31,6 @@ export interface StudentCreate extends BaseUserCreate {
   department: string;
   year: number;
   semester: number;
-  student_id: string;
 }
 
 export type CreateUserPayload = AdminCreate | LecturerCreate | StudentCreate;

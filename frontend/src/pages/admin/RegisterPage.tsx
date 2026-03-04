@@ -26,7 +26,7 @@ const RegisterPage: React.FC = () => {
   const [specialization, setSpecialization] = useState("");
   const [year, setYear] = useState("");
   const [semester, setSemester] = useState("");
-  const [studentId, setStudentId] = useState("");
+
   
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -94,7 +94,6 @@ const RegisterPage: React.FC = () => {
         department,
         year: Number(year),
         semester: Number(semester),
-        student_id: studentId.trim().toUpperCase(),
       };
     } else {
       payload = {
@@ -118,7 +117,6 @@ const RegisterPage: React.FC = () => {
       setSpecialization("");
       setYear("");
       setSemester("");
-      setStudentId("");
     } catch (err: unknown) {
       if (err instanceof Error) {
         toast.error(err.message);
@@ -204,12 +202,6 @@ const RegisterPage: React.FC = () => {
 
           {role === "student" && (
             <>
-              <InputValue
-                label="Student Registration Number"
-                placeholder="e.g. st26010345"
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value.toLowerCase())}
-              />
               <div>
                 <label className="font-medium text-sm text-gray-700 ml-1">Department</label>
                 <select

@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import (
     APIRouter, Depends, Path, Query, HTTPException, status, UploadFile, File, Form
 )
-from app.models.assessment import AssessmentCreate, AssessmentUpdate, AssessmentResponse
+from app.models.assessment import AssessmentCreate, AssessmentUpdate, AssessmentResponse, GradePayload
 from app.services.assessment_service import AssessmentService
 from app.dependencies.auth_dependencies import get_current_user
 
@@ -95,3 +95,22 @@ async def submit_assessment(
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception:
         raise HTTPException(status_code=500, detail="An error occurred during submission.")
+    
+
+@router.get("/{assessment_id}/submissions")
+def get_assessment_submissions(assessment_id: str, current_user=Depends(get_current_user)):
+    if current_user["role"] not in ("admin", "lecturer"):
+        raise HTTPException(status_code=403, detail="Lecturers only")
+    try:
+        return AssessmentService.get_assessment_submissions(assessment_id)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
+@router.put("/submissions/{submission_id}/grade")
+def grade_submission(submission_id: str, payload: GradePayload, current_user=Depends(get_current_user)):
+    if current_user["role"] not in ("admin", "lecturer"):
+        raise HTTPException(status_code=403, detail="Lecturers only")
+    try:
+        return AssessmentService.grade_submission(submission_id, payload.score)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))

@@ -21,6 +21,7 @@ class StudentUpdate(BaseModel):
 
 class StudentResponse(BaseModel):
     user_id: PyObjectId
+    student_id: Optional[str] = None
     full_name: str
     email: EmailStr
     department: str

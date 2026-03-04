@@ -23,6 +23,9 @@ class AssessmentUpdate(BaseModel):
     description: Optional[str] = None
     total_marks: Optional[int] = None
 
+class GradePayload(BaseModel):
+    score: int
+
 class AssessmentResponse(BaseModel):
     # FIX 2: Added Optional so it matches default=None
     id: Optional[str] = Field(alias="_id", default=None) 
