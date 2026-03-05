@@ -12,7 +12,7 @@ class AssessmentCreate(BaseModel):
     
     description: Optional[str] = None
     total_marks: Optional[int] = 0
-    # FIX 1: Use default_factory for mutable objects
+
     settings: Optional[Dict[str, Any]] = Field(default_factory=dict)
     module_id: Optional[str] = None
 
@@ -27,7 +27,6 @@ class GradePayload(BaseModel):
     score: int
 
 class AssessmentResponse(BaseModel):
-    # FIX 2: Added Optional so it matches default=None
     id: Optional[str] = Field(alias="_id", default=None) 
     title: str
     course_id: str
@@ -42,7 +41,7 @@ class AssessmentResponse(BaseModel):
     module_id: Optional[str] = None
     description: Optional[str] = None
     total_marks: Optional[int] = 0
-    # FIX 3: Use default_factory for mutable objects
+
     settings: Optional[Dict[str, Any]] = Field(default_factory=dict)
     question_ids: Optional[List[str]] = Field(default_factory=list)
 

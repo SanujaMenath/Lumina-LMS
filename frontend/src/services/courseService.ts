@@ -5,7 +5,7 @@ export type Course = {
   name: string;
   code: string;
   isEnrolled?: boolean;
-  lecturerId?: string; //for admin/lecturer display
+  lecturerId?: string; 
 };
 
 export type Lecturer = {
@@ -18,7 +18,6 @@ export type CreateCoursePayload = {
   code: string;
 };
 
-// Types for internal API mapping
 type CourseApi = {
   id: string;
   course_name: string;
@@ -27,7 +26,6 @@ type CourseApi = {
   lecturer_id?: string;
 };
 
-// Get courses for current user
 export const getCourses = async (): Promise<Course[]> => {
   const res = await api.get<CourseApi[]>("/courses/me");
   return res.data.map((c) => ({
@@ -39,7 +37,7 @@ export const getCourses = async (): Promise<Course[]> => {
   }));
 };
 
-// Create a new course
+
 export const createCourse = (payload: CreateCoursePayload) =>
   api.post("/courses", {
     course_name: payload.name,
@@ -60,7 +58,7 @@ export const deleteCourse = (id: string) => api.delete(`/courses/${id}`);
 export const enrollCourse = (courseId: string) =>
   api.post(`/courses/${courseId}/enroll`);
 
-// Assign lecturer (admin only)
+// Assign lecturer
 export const assignLecturer = (courseId: string, lecturerId: string) =>
   api.post(`/courses/${courseId}/assign-lecturer`, { lecturer_id: lecturerId });
 

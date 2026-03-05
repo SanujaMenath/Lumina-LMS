@@ -14,27 +14,22 @@ from app.routes.department_routes import router as department_router
 from app.routes.material_routes import router as material_router
 from app.routes.assessment_routes import router as assessment_router
 from app.routes.module_routes import router as module_router
-from app.routes.topic_routes import router as topic_router
+
 from app.routes.outcome_routes import router as outcome_router
 from app.routes.assignment_routes import router as assignment_routes
-from app.routes.question_routes import router as question_router
-from app.routes.timetable_routes import router as timetable_router
-from app.routes.lecture_plan_generator_route import router as lecture_plan_generator_router
 from app.routes.system_log_routes import router as system_log_router
 from app.routes.session_routes import router as session_router
-from app.routes.attendance_routes import router as attendance_router
-from app.routes.quiz_routes import router as quiz_router
-from app.routes.exam_routes import router as exam_router
+
 from app.routes.predict_exam_score import router as predict_exam_score_router
 
 from app.config.settings import settings
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
-# 1. Ensure the directory actually exists so FastAPI doesn't crash on startup
+# Ensure the directory actually exists so FastAPI doesn't crash on startup
 os.makedirs("uploads/materials", exist_ok=True)
 
-# 2. FastAPI serve files from the "uploads" folder whenever a URL starts with "/uploads"
+# FastAPI serve files from the "uploads" folder
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/")
@@ -68,19 +63,12 @@ app.include_router(material_router)
 app.include_router(module_router)
 app.include_router(assessment_router)
 
-app.include_router(topic_router)
+
 app.include_router(outcome_router)
 app.include_router(assignment_routes)
-app.include_router(question_router)
-app.include_router(timetable_router)
 app.include_router(system_log_router)
 app.include_router(session_router)
-app.include_router(attendance_router)
-app.include_router(quiz_router)
-app.include_router(exam_router)
 
-
-app.include_router(lecture_plan_generator_router)
 
 app.include_router(predict_exam_score_router)
 

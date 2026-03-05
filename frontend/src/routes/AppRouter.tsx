@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useInactivityTimeout } from "../hooks/useInactivityTimeout";
 import Login from "../pages/auth/LoginPage";
 import ProtectedRoute from "./ProtectedRoute";
 import HomePage from "../pages/HomePage";
@@ -26,6 +27,7 @@ import LecturerGradingView from "../pages/lecturer/LecturerGradingView";
 import LecturerAssessmentsPage from "../pages/lecturer/LecturerAssessmentsPage";
 
 const AppRouter = () => {
+  useInactivityTimeout();
   return (
     <BrowserRouter>
       <Routes>
