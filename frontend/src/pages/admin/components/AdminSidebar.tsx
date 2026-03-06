@@ -6,7 +6,8 @@ import {
   Building2,
   LogOut,
   Command,
-  User as UserIcon
+  User as UserIcon,
+  ShieldAlert
 } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -16,6 +17,7 @@ const links = [
   { label: "Users", to: "/admin/users", icon: <Users size={20} /> },
   { label: "Courses", to: "/admin/courses", icon: <BookOpen size={20} /> },
   { label: "Departments", to: "/admin/departments", icon: <Building2 size={20} /> },
+  { label: "Audit Logs", to: "/admin/audit-logs", icon: <ShieldAlert size={20} /> }
 ];
 
 const AdminSidebar = () => {

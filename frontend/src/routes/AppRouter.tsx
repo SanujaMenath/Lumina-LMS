@@ -26,6 +26,7 @@ import StudentAssessmentView from "../pages/student/StudentAssessmentView";
 import LecturerGradingView from "../pages/lecturer/LecturerGradingView";
 import LecturerAssessmentsPage from "../pages/lecturer/LecturerAssessmentsPage";
 import AIToolsPage from "../pages/lecturer/AIToolsPage";
+import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
 
 const AppRouter = () => {
   useInactivityTimeout();
@@ -50,6 +51,7 @@ const AppRouter = () => {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="courses" element={<CoursesPage />} />
           <Route path="departments" element={<DepartmentPage />} />
+          <Route path="audit-logs" element={<AdminAuditLogs />} />
         </Route>
 
         <Route

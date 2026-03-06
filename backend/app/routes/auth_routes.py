@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request
+from app.services.audit import log_action
 from pydantic import BaseModel, EmailStr
 from app.services.auth_service import AuthService
 from app.database.connection import get_database
@@ -24,7 +25,7 @@ class LoginResponse(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(data: LoginRequest):
+async def login(data: LoginRequest, request: Request):
     db = get_database()
 
     user = db["users"].find_one({"email": data.email})
@@ -41,6 +42,17 @@ def login(data: LoginRequest):
             "email": user["email"],
             "full_name": user["full_name"],
         }
+    )
+
+    client_ip = request.client.host if request.client else "Unknown"
+
+    await log_action(
+        actor_id=str(user["_id"]),
+        role=user["role"],       
+        action="USER_LOGIN",
+        details=f"{user['role'].capitalize()} logged in successfully.",
+        ip_address=client_ip,
+        actor_name=user["full_name"]
     )
 
     return LoginResponse(

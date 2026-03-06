@@ -2,10 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from app.utils.websocket_manager import manager
 
 from app.routes.test_db import router as test_db_router
 from app.routes.auth_routes import router as auth_router
-
 from app.routes.user_routes import router as user_router
 from app.routes.lecturer_routes import router as lecturer_router
 from app.routes.student_routes import router as student_router
@@ -18,7 +19,6 @@ from app.routes.module_routes import router as module_router
 from app.routes.outcome_routes import router as outcome_router
 from app.routes.assignment_routes import router as assignment_routes
 from app.routes.system_log_routes import router as system_log_router
-from app.routes.session_routes import router as session_router
 
 from app.routes.predict_exam_score import router as predict_exam_score_router
 
@@ -26,10 +26,8 @@ from app.config.settings import settings
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
-# Ensure the directory actually exists so FastAPI doesn't crash on startup
-os.makedirs("uploads/materials", exist_ok=True)
 
-# FastAPI serve files from the "uploads" folder
+os.makedirs("uploads/materials", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/")
@@ -67,10 +65,21 @@ app.include_router(assessment_router)
 app.include_router(outcome_router)
 app.include_router(assignment_routes)
 app.include_router(system_log_router)
-app.include_router(session_router)
-
 
 app.include_router(predict_exam_score_router)
 
-
+# WEBSOCKET ENDPOINT
+@app.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    # 1. Register the user's connection
+    await manager.connect(websocket, user_id)
+    try:
+        # Keep the connection open indefinitely
+        while True:
+            # wait for the client to send a message
+            data = await websocket.receive_text()
+            
+    except WebSocketDisconnect:
+        # If the user closes the browser or logs out, remove them from the active list
+        manager.disconnect(user_id)
 

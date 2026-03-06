@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from app.models.lecturer import LecturerCreate, LecturerUpdate, LecturerResponse
 from app.services.lecturer_service import LecturerService
+from fastapi import Depends
+from app.dependencies.auth_dependencies import require_role
 
 router = APIRouter(prefix="/lecturers", tags=["Lecturers"])
 
@@ -30,3 +32,10 @@ def update(user_id: str, data: LecturerUpdate):
 def delete(user_id: str):
     LecturerService.delete_lecturer(user_id)
     return {"message": "Lecturer deleted"}
+
+@router.get("/{user_id}/dashboard")
+def get_lecturer_dashboard(
+    user_id: str, 
+    current_user = Depends(require_role("lecturer")) 
+):
+    return LecturerService.get_dashboard_stats(user_id)

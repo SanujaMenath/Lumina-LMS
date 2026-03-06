@@ -1,6 +1,5 @@
 from datetime import datetime, timezone 
 from app.database.connection import get_database
-from app.services.auth_service import AuthService
 from app.models.user import LecturerCreate
 from bson import ObjectId
 
@@ -19,7 +18,6 @@ class LecturerService:
 
     @staticmethod
     def get_all():
-        db = get_database()
         users = list(
             db["users"].aggregate(
                 [
@@ -46,7 +44,6 @@ class LecturerService:
 
     @staticmethod
     def get_by_id(user_id):
-        db = get_database()
 
         user = db["users"].find_one({"_id": ObjectId(user_id)})
         profile = db["lecturers"].find_one({"user_id": ObjectId(user_id)})
@@ -63,7 +60,6 @@ class LecturerService:
 
     @staticmethod
     def update_lecturer(user_id, data):
-        db = get_database()
 
         update_doc = {
             **{k: v for k, v in data.dict(exclude_unset=True).items()},
@@ -75,9 +71,92 @@ class LecturerService:
 
     @staticmethod
     def delete_lecturer(user_id):
-        db = get_database()
 
         db["lecturers"].delete_one({"user_id": ObjectId(user_id)})
         db["users"].delete_one({"_id": ObjectId(user_id)})
 
         return True
+    
+    @staticmethod
+    def get_dashboard_stats(user_id: str) -> dict:
+        """
+        Aggregates dashboard statistics for a specific lecturer.
+        """
+        
+        try:
+            lecturer_oid = ObjectId(user_id)
+        except Exception:
+            lecturer_oid = user_id 
+        
+        courses_cursor = list(db["courses"].find({"lecturer_id": lecturer_oid}))
+        courses_count = len(courses_cursor)
+        
+        unique_students = set()
+        
+        for d in courses_cursor:
+            course_dept_name = d.get("department")
+            if not course_dept_name:
+                continue
+
+            dept_match_conditions = [
+                {"department": course_dept_name},
+                {"department_id": course_dept_name}
+            ]
+            
+            dept_doc = db["departments"].find_one({"name": course_dept_name})
+            if dept_doc:
+                dept_id_str = str(dept_doc["_id"])
+                dept_match_conditions.extend([
+                    {"department": dept_id_str},
+                    {"department_id": dept_id_str}
+                ])
+
+            try:
+                course_sem_int = int(d.get("semester", 1))
+            except (ValueError, TypeError):
+                course_sem_int = 1
+
+            student_query = {
+                "$and": [
+                    {"$or": dept_match_conditions},
+                    {"$or": [
+                        {"semester": {"$gte": course_sem_int}},
+                        {"semester": {"$gte": str(course_sem_int)}} 
+                    ]}
+                ]
+            }
+            
+            students = list(db["students"].find(student_query, {"_id": 1}))
+            
+            if not students:
+                fallback_query = {"role": "student", **student_query}
+                students = list(db["users"].find(fallback_query, {"_id": 1}))
+                
+            for s in students:
+                unique_students.add(str(s["_id"]))
+
+        active_students_count = len(unique_students)
+
+        published_assessments = db["assessments"].count_documents({"lecturer_id": lecturer_oid, "status": "published"})
+        pending_reviews = db["submissions"].count_documents({"lecturer_id": lecturer_oid, "graded": False})
+        
+        recent_activity_cursor = db["system_logs"].find(
+            {"role": "lecturer", "actor_id": user_id}
+        ).sort("timestamp", -1).limit(3)
+        
+        recent_activities = [
+            {"title": log["action"], "course": log.get("details", "General")} 
+            for log in recent_activity_cursor
+        ]
+
+        return {
+            "stats": [
+                {"label": "My Courses", "value": courses_count},
+                {"label": "Active Students", "value": active_students_count},
+                {"label": "Pending Reviews", "value": pending_reviews},
+                {"label": "Published Assessments", "value": published_assessments},
+            ],
+            "recentActivities": recent_activities if recent_activities else [
+                {"title": "Account Created", "course": "System"}
+            ]
+        }

@@ -64,14 +64,12 @@ class CourseService:
                 if course_dept_name:
                     d["department"] = str(course_dept_name)
 
-                # --- NEW FIX: Reverse lookup the Department ID ---
-                # Default match conditions (matching the exact string)
+
                 dept_match_conditions = [
                     {"department": course_dept_name},
                     {"department_id": course_dept_name}
                 ]
                 
-                # Try to find this department in the DB to get its ObjectId string
                 dept_doc = db["departments"].find_one({"name": course_dept_name})
                 if dept_doc:
                     dept_id_str = str(dept_doc["_id"])
@@ -80,30 +78,26 @@ class CourseService:
                         {"department": dept_id_str},
                         {"department_id": dept_id_str}
                     ])
-                # ------------------------------------------------
 
                 try:
                     course_sem_int = int(d.get("semester", 1))
                 except (ValueError, TypeError):
                     course_sem_int = 1
 
-                # We use $and to combine the department match AND the semester match
                 student_query = {
                     "$and": [
                         {"$or": dept_match_conditions},
                         {"$or": [
                             {"semester": {"$gte": course_sem_int}},
-                            {"semester": {"$gte": str(course_sem_int)}} # Catch string "1"
+                            {"semester": {"$gte": str(course_sem_int)}} 
                         ]}
                     ]
                 }
                 
-                # Check both 'students' collection AND 'users' collection 
-                # (depending on where your student registration logic saved them)
                 enrolled_count = db["students"].count_documents(student_query)
                 
                 if enrolled_count == 0:
-                    # Fallback just in case student metadata was saved directly in the 'users' collection
+
                     fallback_query = {"role": "student", **student_query}
                     enrolled_count = db["users"].count_documents(fallback_query)
 

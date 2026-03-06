@@ -46,7 +46,7 @@ export const updateMaterialService = async (materialId: string, data: Partial<Ma
   }
 };
 
-// Delete material
+
 export const deleteMaterialService = async (materialId: string) => {
   const res = await api.delete(`/materials/${materialId}`);
   return res.data;
