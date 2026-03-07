@@ -35,7 +35,7 @@ const MaterialManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingMaterial, setEditingMaterial] = useState<DisplayMaterial | null>(null); // NEW: State for Edit
+  const [editingMaterial, setEditingMaterial] = useState<DisplayMaterial | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const getFileIcon = (type: string) => {

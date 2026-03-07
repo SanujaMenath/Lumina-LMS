@@ -18,9 +18,7 @@ from app.routes.notification_routes import router as notifications
 
 from app.routes.assessment_routes import router as assessment_router
 from app.routes.module_routes import router as module_router
-
 from app.routes.assignment_routes import router as assignment_routes
-
 
 from app.routes.predict_exam_score import router as predict_exam_score_router
 

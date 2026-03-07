@@ -2,12 +2,11 @@ import os
 import json
 import shutil
 from datetime import datetime, timezone
-
 from fastapi import HTTPException, UploadFile
 from bson import ObjectId
-
 from app.database.connection import get_database
 from app.models.assessment import AssessmentCreate
+from app.services.audit import notify_user, log_action
 
 db = get_database()
 assessments_col = db["assessments"]
@@ -28,7 +27,7 @@ class AssessmentService:
 
         doc["id"] = str(doc.pop("_id"))
 
-        # Convert any known relationship IDs to strings
+
         for field in ["course_id", "lecturer_id", "student_id", "assessment_id"]:
             if field in doc and doc[field]:
                 doc[field] = str(doc[field])
@@ -43,7 +42,7 @@ class AssessmentService:
         return ObjectId(id_str)
 
     @staticmethod
-    def create_assessment(
+    async def create_assessment( 
         data: AssessmentCreate, lecturer_id: str, file: UploadFile = None
     ):
         doc = data.model_dump()
@@ -52,7 +51,6 @@ class AssessmentService:
         doc["created_at"] = AssessmentService._now()
         doc["updated_at"] = AssessmentService._now()
 
-        # Handle PDF uploads directly in the service
         if data.assessment_type == "pdf" and file:
             upload_dir = "uploads/assessments"
             os.makedirs(upload_dir, exist_ok=True)
@@ -64,6 +62,63 @@ class AssessmentService:
 
         result = assessments_col.insert_one(doc)
         saved_doc = assessments_col.find_one({"_id": result.inserted_id})
+        
+        lecturer = db["users"].find_one({"_id": ObjectId(lecturer_id)})
+        lecturer_name = lecturer.get("full_name", "Lecturer") if lecturer else "Lecturer"
+
+        course = db["courses"].find_one({"_id": ObjectId(data.course_id)})
+        course_name = course.get("course_name", course.get("name", "your course")) if course else "your course"
+        course_dept_name = course.get("department") if course else None
+
+        await log_action(
+            actor_id=lecturer_id,
+            actor_name=lecturer_name,
+            role="lecturer",
+            action="ASSESSMENT_CREATED",
+            details=f"Created assessment '{data.title}' for course {data.course_id}"
+        )
+        
+        if course_dept_name:
+            dept_match_conditions = [
+                {"department": course_dept_name},
+                {"department_id": course_dept_name}
+            ]
+            
+            dept_doc = db["departments"].find_one({"name": course_dept_name})
+            
+            if dept_doc:
+                dept_id_str = str(dept_doc["_id"])
+                dept_match_conditions.extend([
+                    {"department": dept_id_str},
+                    {"department_id": dept_id_str},
+                    {"department_id": dept_doc["_id"]} 
+                ])
+
+            enrolled_students = list(db["students"].find({"$or": dept_match_conditions}))
+            
+            if len(enrolled_students) == 0:
+                enrolled_students = list(db["users"].find({
+                    "role": "student", 
+                    "$or": dept_match_conditions
+                }))
+
+            print(f"DEBUG: Found {len(enrolled_students)} students to notify!")
+
+            due_date_str = data.due_date.strftime('%Y-%m-%d %H:%M') if data.due_date else 'TBA'
+
+
+            for student in enrolled_students:
+                student_user_id = str(student.get("user_id", student.get("_id")))
+                
+                if student_user_id:
+                    await notify_user(
+                        recipient_id=student_user_id,
+                        target_role="student",
+                        title="New Assessment Published",
+                        message=f"Prof. {lecturer_name} assigned '{data.title}' for {course_name}. Due: {due_date_str}.",
+                        link=f"/student/courses/{data.course_id}" 
+                    )
+
         return AssessmentService._format_doc(saved_doc)
 
     @staticmethod
@@ -107,7 +162,6 @@ class AssessmentService:
         if res.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Assessment not found")
 
-        # Cascade delete from the correct collection
         submissions_col.delete_many({"assessment_id": oid})
         return {"message": "Assessment deleted"}
 
@@ -124,7 +178,6 @@ class AssessmentService:
 
         update_data = {"submitted_at": AssessmentService._now(), "status": "submitted"}
 
-        # Handle MCQ Answers & AUTO-GRADING
         if answers:
             try:
                 parsed_answers = json.loads(answers)
@@ -138,18 +191,25 @@ class AssessmentService:
 
                     for q in questions:
                         q_id = str(q.get("id"))
-                        if q_id in parsed_answers and parsed_answers[q_id] == q.get(
-                            "correctIndex"
-                        ):
+
+                        if q_id not in parsed_answers:
+                            continue
+
+                        student_answer = int(parsed_answers[q_id])
+                        correct_answer = int(q.get("correctIndex"))
+
+                        if student_answer == correct_answer:
                             correct_count += 1
 
                     total_questions = len(questions)
-                    max_score = assessment.get("total_marks", 100)
+                    max_score = assessment.get("total_marks")
 
-                    # Calculate final score
+                    if not max_score or max_score == 0:
+                        max_score = total_questions
+
                     if total_questions > 0:
                         calculated_score = int(
-                            (correct_count / total_questions) * max_score
+                            (correct_count / total_questions) * 100
                         )
                         update_data["score"] = calculated_score
                         update_data["status"] = "graded"
@@ -157,7 +217,6 @@ class AssessmentService:
             except json.JSONDecodeError:
                 raise ValueError("Invalid JSON format for answers")
 
-        # 2. Handle PDF Uploads
         elif file:
             student_upload_dir = "uploads/submissions"
             os.makedirs(student_upload_dir, exist_ok=True)
@@ -179,7 +238,6 @@ class AssessmentService:
         submissions_col.update_one(filter_query, {"$set": update_data}, upsert=True)
         return {"message": "Submission saved successfully!"}
 
-    # Method for lecturers to view all submissions
     @staticmethod
     def get_assessment_submissions(assessment_id: str):
         if not ObjectId.is_valid(assessment_id):
@@ -194,13 +252,11 @@ class AssessmentService:
             formatted_sub = AssessmentService._format_doc(sub)
             student_id_str = formatted_sub["student_id"]
 
-            # Fetch the user to get their full name
             user = db["users"].find_one({"_id": ObjectId(student_id_str)})
 
             if user:
                 formatted_sub["student_name"] = user.get("full_name", "Unknown Student")
 
-                # Try to find their custom ID (e.g. st2026354)
                 student_profile = db["students"].find_one(
                     {"user_id": ObjectId(student_id_str)}
                 )
@@ -268,13 +324,11 @@ class AssessmentService:
         if not ObjectId.is_valid(student_id):
             raise ValueError("Invalid student ID")
             
-        # Find all graded submissions for a specific student
         submissions = list(submissions_col.find({
             "student_id": ObjectId(student_id), 
             "status": "graded"
         }))
 
-        # Group scores by course
         course_totals = {} 
 
         for sub in submissions:
@@ -284,11 +338,9 @@ class AssessmentService:
 
             c_id = str(assessment["course_id"])
             
-            # Safely fetch total marks.
             raw_max = assessment.get("total_marks")
             max_score = int(raw_max) if raw_max else 100
             
-            # Safely fetch the score the lecturer inputted
             obtained_score = int(sub.get("score", 0))
 
             if c_id not in course_totals:
@@ -297,17 +349,14 @@ class AssessmentService:
             course_totals[c_id]["obtained"] += obtained_score
             course_totals[c_id]["max"] += max_score
 
-        # Format the output and calculate letter grades
         results = []
         for c_id, totals in course_totals.items():
             course = courses_col.find_one({"_id": ObjectId(c_id)})
             if not course:
                 continue
 
-            # Calculate percentage accurately
             percentage = (totals["obtained"] / totals["max"]) * 100 if totals["max"] > 0 else 0
             
-            # Simple grading scale
             if percentage >= 90: letter = "A+"
             elif percentage >= 85: letter = "A"
             elif percentage >= 80: letter = "A-"
@@ -318,7 +367,6 @@ class AssessmentService:
             elif percentage >= 50: letter = "D"
             else: letter = "F"
 
-            # Use the correct database keys
             results.append({
                 "id": c_id,
                 "courseCode": course.get("course_code", course.get("code", "Unknown")),

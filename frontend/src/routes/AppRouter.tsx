@@ -27,6 +27,7 @@ import LecturerGradingView from "../pages/lecturer/LecturerGradingView";
 import LecturerAssessmentsPage from "../pages/lecturer/LecturerAssessmentsPage";
 import AIToolsPage from "../pages/lecturer/AIToolsPage";
 import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
+import PredictExamScore from "../pages/student/PredictExamScore";
 
 const AppRouter = () => {
   useInactivityTimeout();
@@ -87,6 +88,7 @@ const AppRouter = () => {
           <Route path="grades" element={<StudentGradesPage />} />
           <Route path="courses/:courseId" element={<StudentCourseMaterials />} />
           <Route path="assignments/:assignmentId" element={<StudentAssessmentView />} />
+          <Route path="predict-exam-score" element={<PredictExamScore />} />
         </Route>
 
         <Route path="*" element={<HomePage />} />

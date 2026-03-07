@@ -13,10 +13,13 @@ from .services.assessments import generate_assessments
 from .services.planner import generate_lecture_plan
 from .rag.vectorstore import ingest_pdf
 
+# from backend.app.routes.student_quiz_routes import router as student_quiz_router
+
 
 app = FastAPI(title="LectureAI Backend", version="0.1.0")
+# app.include_router(student_quiz_router,prefix="/student-quiz", tags=["Student Quiz AI"])
 
-# Basic CORS – adjust origins as needed for your frontend
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
