@@ -28,13 +28,9 @@ async def notify_user(recipient_id: str, target_role: str | None, title: str, me
         link=link
     )
     
-    # Save it to the database so it persists if they are offline
     db["notifications"].insert_one(new_notif.model_dump())
-
-    # Convert the Pydantic model to a dictionary with stringified dates for JSON
     notif_data = new_notif.model_dump()
     notif_data["created_at"] = notif_data["created_at"].isoformat()
-    
-    # Push it instantly to the specific user via WebSockets
+
     if recipient_id:
         await manager.send_personal_message(notif_data, recipient_id)

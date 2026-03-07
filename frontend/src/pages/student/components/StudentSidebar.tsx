@@ -16,6 +16,7 @@ const links = [
   { label: "My Courses", to: "/student/my-courses", icon: <GraduationCap size={20} /> },
   { label: "Assignments", to: "/student/assignments", icon: <ClipboardList size={20} /> },
   { label: "Grades", to: "/student/grades", icon: <Trophy size={20} /> },
+  { label: "Predict Exam Score", to: "/student/predict-exam-score", icon: <BookOpenCheck size={20} /> }
 ];
 
 const StudentSidebar = () => {

@@ -26,25 +26,20 @@ def _extract_json_from_content(content: str) -> dict[str, Any] | None:
     """
     content = content.strip()
 
-    # First, try straight parsing
     try:
         return json.loads(content)
     except json.JSONDecodeError:
         pass
 
-    # Strip common markdown fences if present
     if content.startswith("```"):
-        # Remove leading and trailing fences
-        # e.g. ```json ... ```
+  
         parts = content.split("```")
         if len(parts) >= 3:
             inner = "```".join(parts[1:-1]).strip()
             try:
                 return json.loads(inner)
             except json.JSONDecodeError:
-                content = inner  # fall through to brace search
-
-    # Fallback: find the first '{' and last '}' and try that slice
+                content = inner 
     start = content.find("{")
     end = content.rfind("}")
     if start != -1 and end != -1 and end > start:
@@ -177,7 +172,6 @@ def planner_node(state: PlannerState) -> PlannerState:
             "Re-adjust only the duration_minutes fields to match the target while keeping the same structure."
         )
 
-    # If we reach here, just store the last attempt (even if imperfect) to avoid total failure
     if previous_plan is not None:
         state["lecture_plan"] = previous_plan
         state["_attempt"] = 3

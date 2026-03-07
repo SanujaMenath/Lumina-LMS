@@ -5,16 +5,12 @@ import logging
 import time
 import uuid
 from typing import Any, Dict, List, Literal, TypedDict
-
 from langchain_community.chat_models import ChatOllama
 from langgraph.graph import END, StateGraph
-
 from ..config import settings
 from ..rag.vectorstore import retrieve_passages
 
-
 logger = logging.getLogger(__name__)
-
 
 class AssessmentState(TypedDict, total=False):
     lecture_plan: Dict[str, Any]
@@ -34,7 +30,6 @@ class AssessmentState(TypedDict, total=False):
     critic_feedback: str
     last_verdict: Literal["accept", "reject"]
 
-    # Loop safety
     max_attempts: int
     step_count: int
     generator_placeholder: bool
@@ -93,17 +88,13 @@ def _extract_topics(state: AssessmentState) -> List[str]:
             if obj:
                 topics.append(str(obj))
 
-    # If nothing matched, fall back to the raw focus topics list
     if not topics and focus:
         topics = list(focus)
 
-    # If there is No lecture plan and No focus topics, give it a generic search query to ensure we get some results back.
     if not topics:
         topics = ["Key concepts, main ideas, and important definitions from the document"]
 
-    # Deduplicate while preserving order
     return list(dict.fromkeys(topics))
-
 
 def _generator_prompt(
     topic: str,
@@ -248,7 +239,7 @@ def generator_node(state: AssessmentState) -> AssessmentState:
         for doc in passages
     ]
 
-    # Collect stems of previously accepted questions to avoid repetition
+
     previous_stems = [q.get("stem", "") for q in (state.get("questions") or [])]
 
     feedback = state.get("critic_feedback")
@@ -288,7 +279,6 @@ def generator_node(state: AssessmentState) -> AssessmentState:
 def critic_node(state: AssessmentState) -> AssessmentState:
     candidate = state.get("candidate_question") or {}
 
-    # Auto-accept placeholders — no point sending them through the critic
     if state.get("generator_placeholder"):
         logger.info("Critic: auto-accepting placeholder id=%s", candidate.get("id"))
         questions = state.get("questions") or []
@@ -311,7 +301,6 @@ def critic_node(state: AssessmentState) -> AssessmentState:
     content = _call_llm(llm, prompt, settings.assessment_critic_timeout_seconds)
 
     if content is None:
-        # On LLM failure, accept the question with a note rather than losing it
         logger.warning("Critic: LLM failed; auto-accepting question id=%s", candidate.get("id"))
         candidate.setdefault("source_metadata", {})["note"] = "critic_timeout_accepted"
         questions = state.get("questions") or []
@@ -322,7 +311,6 @@ def critic_node(state: AssessmentState) -> AssessmentState:
 
     parsed = _extract_json_from_content(content)
     if parsed is None:
-        # Cannot parse critic response — accept the question rather than rejecting blindly
         logger.warning("Critic: could not extract JSON; auto-accepting question id=%s", candidate.get("id"))
         candidate.setdefault("source_metadata", {})["note"] = "critic_json_accepted"
         questions = state.get("questions") or []
@@ -336,7 +324,7 @@ def critic_node(state: AssessmentState) -> AssessmentState:
         verdict = "accept"
 
     logger.info("Critic: verdict=%s for question id=%s", verdict, candidate.get("id"))
-    state["last_verdict"] = verdict  # type: ignore[assignment]
+    state["last_verdict"] = verdict 
 
     if verdict == "accept":
         questions = state.get("questions") or []
@@ -367,12 +355,12 @@ def route_node(state: AssessmentState) -> AssessmentState:
             "Route: max_attempts reached (step=%s, max=%s, accepted=%s, target=%s); stopping early",
             state["step_count"], max_attempts, state.get("question_count", 0), num_questions,
         )
-        state["route_decision"] = "done"  # type: ignore[assignment]
+        state["route_decision"] = "done" 
         return state
 
     if int(state.get("question_count", 0)) >= num_questions:
         logger.info("Route: target reached (%s questions); done", state.get("question_count", 0))
-        state["route_decision"] = "done"  # type: ignore[assignment]
+        state["route_decision"] = "done" 
         return state
 
     topics = state.get("topics") or _extract_topics(state)
@@ -380,7 +368,7 @@ def route_node(state: AssessmentState) -> AssessmentState:
     topic_index = (topic_index + 1) % max(len(topics), 1)
     state["topics"] = topics
     state["topic_index"] = topic_index
-    state["route_decision"] = "more"  # type: ignore[assignment]
+    state["route_decision"] = "more" 
     return state
 
 

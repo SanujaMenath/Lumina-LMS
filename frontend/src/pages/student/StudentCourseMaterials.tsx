@@ -36,7 +36,6 @@ const StudentCourseMaterials: React.FC = () => {
         setLoading(true);
         const data = await fetchMaterialsByCourse(courseId);
         
-        // Sort by newest first
         data.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         setMaterials(data);
       } catch (error) {

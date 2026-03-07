@@ -28,8 +28,8 @@ async def create_assessment(
             due_date=due_date,
             content=content
         )
-        # Pass everything, including the file, down to the service layer
-        return AssessmentService.create_assessment(data, lecturer_id, file)
+
+        return await AssessmentService.create_assessment(data, lecturer_id, file)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

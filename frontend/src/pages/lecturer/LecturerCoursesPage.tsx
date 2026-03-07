@@ -9,12 +9,14 @@ import {
   GraduationCap, 
   Clock 
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 const LecturerCoursesPage: React.FC = () => {
   const [courses, setCourses] = useState<LecturerCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadCourses = async () => {
@@ -121,7 +123,9 @@ const LecturerCoursesPage: React.FC = () => {
                     </span>
                   </div>
                   
-                  <button className="flex items-center gap-1.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg shadow-sm transition-colors active:scale-95">
+                  <button 
+                  onClick={()=>navigate(`/lecturer/materials`)}
+                  className="flex items-center gap-1.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg shadow-sm transition-colors active:scale-95">
                     <Settings size={14} />
                     Manage
                   </button>

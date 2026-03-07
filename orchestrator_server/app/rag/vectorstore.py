@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import shutil
 import uuid
 from pathlib import Path
@@ -54,7 +53,6 @@ async def ingest_pdf(file: UploadFile, document_set_id: str | None = None) -> Di
     )
     chunks = splitter.split_documents(pages)
 
-    # Attach metadata
     for idx, doc in enumerate(chunks):
         meta = doc.metadata or {}
         meta.setdefault("source_file", file.filename)
@@ -77,4 +75,13 @@ def retrieve_passages(document_set_id: str, query: str, k: int = 6):
     """Retrieve top-k passages for a query from the vector store."""
     vectorstore = get_vectorstore(document_set_id)
     return vectorstore.similarity_search(query, k=k)
+
+def retrieve_passages_for_course(course_id: str, topic: str, k: int = 6):
+    """Retrieves passages across all materials for a specific course."""
+    vectorstore = get_vectorstore(course_id)
+    return vectorstore.similarity_search(
+        query=topic,
+        k=k,
+        filter={"course_id": course_id} 
+    )
 
