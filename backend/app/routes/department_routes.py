@@ -1,8 +1,6 @@
-# app/routes/department_routes.py
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter
 from app.models.department import DepartmentCreate, DepartmentResponse, DepartmentUpdate
 from app.services.department_service import DepartmentService
-from bson import ObjectId
 
 router = APIRouter(prefix="/departments", tags=["Departments"])
 

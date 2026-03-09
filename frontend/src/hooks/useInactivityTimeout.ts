@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 
-// 1 hour in milliseconds
 const INACTIVITY_LIMIT = 60 * 60 * 1000; 
 
 export const useInactivityTimeout = () => {

@@ -19,7 +19,7 @@ export const fetchAssessmentSubmissions = async (assessmentId: string): Promise<
   return res.data;
 };
 
-// Grade submission
+
 export const gradeSubmissionService = async (submissionId: string, score: number) => {
   const res = await api.put(`/assessments/submissions/${submissionId}/grade`, { score });
   return res.data;

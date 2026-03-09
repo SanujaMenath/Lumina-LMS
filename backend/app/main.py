@@ -15,11 +15,7 @@ from app.routes.department_routes import router as department_router
 from app.routes.material_routes import router as material_router
 from app.routes.system_log_routes import router as system_log_router
 from app.routes.notification_routes import router as notifications
-
 from app.routes.assessment_routes import router as assessment_router
-from app.routes.module_routes import router as module_router
-from app.routes.assignment_routes import router as assignment_routes
-
 from app.routes.predict_exam_score import router as predict_exam_score_router
 
 from app.config.settings import settings
@@ -68,13 +64,7 @@ app.include_router(department_router)
 app.include_router(material_router)
 app.include_router(system_log_router)
 app.include_router(notifications)
-
-app.include_router(module_router)
 app.include_router(assessment_router)
-
-app.include_router(assignment_routes)
-
-
 app.include_router(predict_exam_score_router)
 
 

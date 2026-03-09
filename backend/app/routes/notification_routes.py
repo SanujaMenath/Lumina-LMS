@@ -1,4 +1,3 @@
-# backend/app/routes/notification_routes.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.database.connection import get_database
 from app.dependencies.auth_dependencies import get_current_user 
@@ -11,10 +10,8 @@ def get_user_notifications(current_user: dict = Depends(get_current_user)):
     db = get_database()
     user_id = str(current_user.get("id") or current_user.get("_id"))
     
-    # 1. Query MongoDB synchronously
     cursor = db["notifications"].find({"recipient_id": user_id}).sort("created_at", -1).limit(50)
     
-    # 2. Loop through and format the ObjectId safely
     notifications_docs = []
     for notif in cursor:
         notif["_id"] = str(notif["_id"]) 

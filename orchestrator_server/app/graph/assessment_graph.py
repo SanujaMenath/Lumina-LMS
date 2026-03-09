@@ -123,7 +123,15 @@ The question must have exactly 4 options with one correct answer.
 The question MUST be unique and different from any previously generated questions.
 
 You MUST respond with ONLY a JSON object, no other text. Use this exact format:
-{{"id": "q1", "stem": "What is ...?", "options": ["A", "B", "C", "D"], "correct_option_index": 0, "explanation": "Because ...", "source_metadata": {{}}}}"""
+{
+{
+  "id": "q1", 
+  "stem": "What is...?", 
+  "options": ["A. ", "B. ", "C. ", "D. "], 
+  "correct_option_index": 0, 
+  "explanation": "Because...", 
+  "source_metadata": {}
+}}"""
 
     if previous_stems:
         stems_list = "\n".join(f"- {s}" for s in previous_stems[-10:])

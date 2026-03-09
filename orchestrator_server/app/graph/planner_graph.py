@@ -139,7 +139,6 @@ def planner_node(state: PlannerState) -> PlannerState:
 
         plan_dict = _extract_json_from_content(content)
         if plan_dict is None:
-            # Ask the model again, emphasising JSON-only output
             feedback = "Your previous response was not valid JSON. Return ONLY valid JSON that follows the schema."
             previous_plan = None
             continue

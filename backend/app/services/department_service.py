@@ -4,7 +4,6 @@ from app.database.connection import get_database
 from datetime import datetime, timezone
 from fastapi import HTTPException
 
-# Define the collection at the module level
 db = get_database()
 dept_col = db["departments"]
 
@@ -64,10 +63,7 @@ class DepartmentService:
         if not ObjectId.is_valid(dept_id):
             raise HTTPException(status_code=400, detail="Invalid department ID")
 
-        # Add the updated timestamp
         update_data["updated_at"] = datetime.now(timezone.utc)
-
-        # $set tells MongoDB to only update the provided fields, leaving others alone
         result = dept_col.update_one({"_id": ObjectId(dept_id)}, {"$set": update_data})
 
         if result.matched_count == 0:

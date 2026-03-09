@@ -1,4 +1,3 @@
-# backend/app/models/notification.py
 import uuid
 from pydantic import BaseModel, Field
 from datetime import datetime

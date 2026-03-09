@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any
 class AssessmentCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=150)
     course_id: str
-    assessment_type: str  # 'mcq', 'short_answer', 'pdf', 'AI_generated'
+    assessment_type: str
     due_date: datetime
     content: Optional[str] = None 
     file_url: Optional[str] = None

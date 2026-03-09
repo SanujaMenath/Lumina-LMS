@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     planner_model_name: str = "gemma3:4b"
     embedding_model_name: str = "nomic-embed-text:latest"
 
-    # Assessment-related knobs
     assessment_llm_timeout_seconds: float = 60.0
     assessment_critic_timeout_seconds: float = 45.0
     assessment_max_attempt_multiplier: int = 4
@@ -24,7 +23,6 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Ensure base directories exist at import time for simplicity
 settings.base_data_dir.mkdir(parents=True, exist_ok=True)
 settings.chroma_db_dir.mkdir(parents=True, exist_ok=True)
 settings.uploads_dir.mkdir(parents=True, exist_ok=True)

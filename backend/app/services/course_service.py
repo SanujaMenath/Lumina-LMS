@@ -1,4 +1,3 @@
-# backend/app/services/course_service.py
 from app.database.connection import get_database
 from bson import ObjectId
 from datetime import datetime, timezone
@@ -34,21 +33,17 @@ class CourseService:
         doc["_id"] = res.inserted_id
         doc["id"] = str(res.inserted_id)
 
-        # ---------------------------------------------------------
-        # NOTIFICATION LOGIC: Alert all system administrators
-        # ---------------------------------------------------------
-        
-        # Find all users with the role of admin
+
         admins = db["users"].find({"role": "admin"})
         
-        # Loop through and instantly push the WebSocket event to them
+
         for admin in admins:
             await notify_user(
                 recipient_id=str(admin["_id"]),
                 target_role="admin",
                 title="New Course Created",
                 message=f"The course '{data.course_code}: {data.course_name}' has been added to the system.",
-                link="/admin/courses" # Route to your React admin course table
+                link="/admin/courses"
             )
 
         return doc
@@ -92,7 +87,6 @@ class CourseService:
                 dept_doc = db["departments"].find_one({"name": course_dept_name})
                 if dept_doc:
                     dept_id_str = str(dept_doc["_id"])
-                    # Add the ID to our match conditions
                     dept_match_conditions.extend([
                         {"department": dept_id_str},
                         {"department_id": dept_id_str}
@@ -164,14 +158,12 @@ class CourseService:
     def delete_course(course_id: str):
         if not ObjectId.is_valid(course_id):
             raise HTTPException(status_code=400, detail="Invalid course id")
-        # remove enrollments first (cascade)
         course_students_col.delete_many({"course_id": ObjectId(course_id)})
         res = courses_col.delete_one({"_id": ObjectId(course_id)})
         if res.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Course not found")
         return {"message": "Course deleted"}
 
-    # Enrollment helpers
     @staticmethod
     def enroll_student(course_id: str, student_id: str):
         if not ObjectId.is_valid(course_id) or not ObjectId.is_valid(student_id):
@@ -180,21 +172,17 @@ class CourseService:
         course_oid = ObjectId(course_id)
         student_oid = ObjectId(student_id)
 
-        # Check course exists
         course = courses_col.find_one({"_id": course_oid})
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        # Check student exists
         student = db["users"].find_one({"_id": student_oid})
         if not student:
             raise HTTPException(status_code=404, detail="Student not found")
 
-        # Check role
         if student.get("role") != "student":
             raise HTTPException(status_code=400, detail="User is not a student")
 
-        # Check already enrolled
         exists = course_students_col.find_one(
             {"course_id": course_oid, "student_id": student_oid}
         )
@@ -221,28 +209,25 @@ class CourseService:
 
     @staticmethod
     def unenroll_student(course_id: str, student_id: str):
-        # Validate ObjectId format
+
         if not ObjectId.is_valid(course_id) or not ObjectId.is_valid(student_id):
             raise HTTPException(status_code=400, detail="Invalid IDs")
 
         course_oid = ObjectId(course_id)
         student_oid = ObjectId(student_id)
 
-        # Check course exists
         course = courses_col.find_one({"_id": course_oid})
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        # Check student exists
         student = db["users"].find_one({"_id": student_oid})
         if not student:
             raise HTTPException(status_code=404, detail="Student not found")
 
-        # Check user role
         if student.get("role") != "student":
             raise HTTPException(status_code=400, detail="User is not a student")
 
-        # Check enrollment record exists
+
         enrollment = course_students_col.find_one(
             {"course_id": course_oid, "student_id": student_oid}
         )
@@ -252,7 +237,6 @@ class CourseService:
                 status_code=404, detail="Student not enrolled in this course"
             )
 
-        # Perform deletion
         course_students_col.delete_one(
             {"course_id": course_oid, "student_id": student_oid}
         )
@@ -310,7 +294,6 @@ class CourseService:
         if not ObjectId.is_valid(student_id):
             raise HTTPException(status_code=400, detail="Invalid student id")
 
-        # 1. Fetch from the students collection using user_id
         student_record = db["students"].find_one({"user_id": ObjectId(student_id)})
         
         if not student_record:
@@ -319,22 +302,18 @@ class CourseService:
         if not student_record:
             raise HTTPException(status_code=404, detail="Student record not found")
 
-        # 2. Get the department ID
         dept_identifier = student_record.get("department") or student_record.get("department_id")
         
         if not dept_identifier:
             return []
 
-        # 3. Convert that ID into the Department Name 
         student_dept_name = dept_identifier
         
         if ObjectId.is_valid(str(dept_identifier)):
-            # fetch the real name from the departments collection
             dept_doc = db["departments"].find_one({"_id": ObjectId(str(dept_identifier))})
             if dept_doc and "name" in dept_doc:
                 student_dept_name = dept_doc["name"]
 
-        # 4. Get Semester safely
         try:
             student_semester_int = int(student_record.get("semester", 1))
         except (ValueError, TypeError):
@@ -342,19 +321,17 @@ class CourseService:
 
         student_semester_str = str(student_semester_int)
 
-        # 5. Execute Pipeline matching the NAME
         pipeline = [
             {
                 "$match": {
                     "$and": [
-                        # Match the resolved Department Name
                         {
                             "$or": [
                                 {"department": student_dept_name},
-                                {"department": dept_identifier} # fallback
+                                {"department": dept_identifier} 
                             ]
                         },
-                        # Match Semester
+
                         {
                             "$or": [
                                 {"semester": {"$lte": student_semester_int}},

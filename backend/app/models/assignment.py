@@ -11,7 +11,7 @@ class AssignmentCreate(BaseModel):
     due_date: datetime
     max_marks: Optional[int] = 100
     is_auto_generated: Optional[bool] = False
-    metadata: Optional[dict] = None  # e.g. {"difficulty":"medium", "type":"mcq"}
+    metadata: Optional[dict] = None 
 
 
 class AssignmentUpdate(BaseModel):

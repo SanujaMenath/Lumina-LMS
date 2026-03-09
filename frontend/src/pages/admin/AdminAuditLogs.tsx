@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { ShieldAlert, Clock, User, Activity, Globe, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { API_BASE_URL } from "../../services/api";
 
-const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
 interface SystemLog {
   _id: string;
@@ -39,7 +39,7 @@ const AdminAuditLogs: React.FC = () => {
         }
 
         const skip = (currentPage - 1) * limit;
-        const response = await axios.get(`${API_URL}/system-logs/?skip=${skip}&limit=${limit}`, {
+        const response = await axios.get(`${API_BASE_URL}/system-logs/?skip=${skip}&limit=${limit}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -124,7 +124,6 @@ const AdminAuditLogs: React.FC = () => {
                     <td className="p-4">
                       <div className="flex flex-col items-start gap-1">
                         {getRoleBadge(log.role)}
-                        {/* NEW: Try to show the name first, fall back to the ID, then "System" */}
                         <span className="text-sm font-semibold text-gray-800 truncate max-w-[150px]" title={log.actor_name || log.actor_id || "System"}>
                           {log.actor_name || log.actor_id || "System"}
                         </span>

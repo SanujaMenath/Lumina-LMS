@@ -9,7 +9,7 @@ sessions_col = db["sessions"]
 courses_col = db["courses"]
 lecturers_col = db["lecturers"]
 users_col = db["users"]
-course_students_col = db["course_students"]  # mapping collection
+course_students_col = db["course_students"] 
 
 class SessionService:
 
@@ -30,7 +30,6 @@ class SessionService:
 
     @staticmethod
     def _ensure_lecturer_exists(lecturer_id: ObjectId):
-        # check users collection role = lecturer or lecturers collection has mapping
         user = users_col.find_one({"_id": lecturer_id})
         if not user or user.get("role") != "lecturer":
             raise HTTPException(status_code=404, detail="Lecturer not found")
@@ -48,7 +47,6 @@ class SessionService:
         else:
             query["location"] = entity_id
 
-        # overlap: start < existing_end AND end > existing_start
         query.update({
             "$and": [
                 {"start_time": {"$lt": end_time}},
@@ -64,7 +62,6 @@ class SessionService:
 
     @staticmethod
     def create_session(payload):
-        # payload is SessionCreate instance
         course_oid = ObjectId(str(payload.course_id))
         lecturer_oid = ObjectId(str(payload.lecturer_id))
         start = payload.start_time
@@ -73,15 +70,12 @@ class SessionService:
         if start >= end:
             raise HTTPException(status_code=400, detail="start_time must be before end_time")
 
-        # validations
         SessionService._ensure_course_exists(course_oid)
         SessionService._ensure_lecturer_exists(lecturer_oid)
 
-        # check lecturer overlap
         if SessionService._check_overlap("lecturer_id", lecturer_oid, start, end):
             raise HTTPException(status_code=400, detail="Lecturer has another session during this time")
 
-        # if location provided, check room overlap
         if payload.location and SessionService._check_overlap("location", payload.location, start, end):
             raise HTTPException(status_code=400, detail="Location is already booked during this time")
 
@@ -146,7 +140,6 @@ class SessionService:
 
         update_doc = {k: v for k, v in payload.dict(exclude_unset=True).items()}
 
-        # if times change, validate
         start = update_doc.get("start_time", current["start_time"])
         end = update_doc.get("end_time", current["end_time"])
         if start >= end:

@@ -26,7 +26,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    # cleanup
     user["id"] = str(user["_id"])
     user.pop("_id", None)
     user.pop("password", None)
