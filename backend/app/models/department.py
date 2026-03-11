@@ -5,7 +5,7 @@ from app.models.object_id import PyObjectId
 
 class DepartmentBase(BaseModel):
     name: str
-    code: str  # e.g., "CS", "ENG"
+    code: str
     description: Optional[str] = None
     faculty: Optional[str] = None
 

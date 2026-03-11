@@ -17,7 +17,6 @@ import {
 import { toast } from "react-hot-toast";
 import { getAdminDashboardData, type DashboardStats, type RecentUser } from "./services/dashboardService";
 
-// Helper function to calculate "time ago"
 const timeAgo = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
@@ -42,7 +41,6 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>("");
   
-  // Clean Data States
   const [counts, setCounts] = useState<DashboardStats>({ students: 0, lecturers: 0, courses: 0, departments: 0 });
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
 
@@ -51,13 +49,11 @@ const AdminDashboard: React.FC = () => {
       try {
         setLoading(true);
         
-        // Fetch processed data directly from our new service
         const data = await getAdminDashboardData();
         
         setCounts(data.stats);
         setRecentUsers(data.recentUsers);
 
-        // Set Last Updated Time
         const now = new Date();
         setLastUpdated(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' - ' + now.toLocaleDateString());
 

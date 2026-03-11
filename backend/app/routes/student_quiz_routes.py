@@ -5,7 +5,6 @@ from app.dependencies.auth_dependencies import get_current_user
 
 router = APIRouter()
 
-
 @router.post("/generate-practice")
 async def generate_practice_quiz(
     course_id: str, 

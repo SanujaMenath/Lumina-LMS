@@ -10,7 +10,7 @@ class MaterialService:
 
     @staticmethod
     async def create_material(data: MaterialCreate, lecturer_id: str, original_filename: str):
-        # 1. Prepare and insert the material document
+
         material_doc = data.model_dump()
         material_doc["lecturer_id"] = ObjectId(lecturer_id)
         material_doc["course_id"] = ObjectId(data.course_id) 
@@ -20,15 +20,10 @@ class MaterialService:
         result = db["materials"].insert_one(material_doc)
         created_material = MaterialService.get_by_id(str(result.inserted_id))
 
-        # ---------------------------------------------------------
-        # 2. BUSINESS LOGIC: Audit Log & Notifications
-        # ---------------------------------------------------------
-        
-        # Fetch lecturer name for the logs
+
         lecturer = db["users"].find_one({"_id": ObjectId(lecturer_id)})
         lecturer_name = lecturer.get("full_name", "Lecturer") if lecturer else "Lecturer"
 
-        # Log the action asynchronously
         await log_action(
             actor_id=lecturer_id,
             actor_name=lecturer_name,
@@ -37,17 +32,16 @@ class MaterialService:
             details=f"Uploaded '{data.title}' ({original_filename}) to course {data.course_id}"
         )
 
-        # Fetch course name
+
         course = db["courses"].find_one({"_id": ObjectId(data.course_id)})
         course_name = course.get("name", "your course") if course else "your course"
 
-        # Find enrolled students
+
         enrolled_students = db["users"].find({
             "role": "student",
             "enrolled_courses": ObjectId(data.course_id) 
         })
 
-        # Broadcast the WebSocket notification to each enrolled student
         for student in enrolled_students:
             await notify_user(
                 recipient_id=str(student["_id"]),
@@ -64,7 +58,6 @@ class MaterialService:
         material = db["materials"].find_one({"_id": ObjectId(material_id)})
         if material:
             material["_id"] = str(material["_id"]) 
-            # Make sure ObjectIds are converted to strings for Pydantic response
             if "lecturer_id" in material:
                 material["lecturer_id"] = str(material["lecturer_id"])
             if "course_id" in material:

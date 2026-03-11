@@ -10,13 +10,11 @@ class AuthService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        # limit it to 72 bytes because bcrypt only supports up to 72 bytes
         trimmed = password[:72]
         return pwd_context.hash(trimmed)
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        # limit it to 72 bytes because bcrypt only supports up to 72 bytes
         trimmed = plain_password[:72]
         return pwd_context.verify(trimmed, hashed_password)
 

@@ -22,7 +22,7 @@ class MaterialUpdate(BaseModel):
 class MaterialResponse(BaseModel):
     id: PyObjectId = Field(alias="_id")
     course_id: PyObjectId
-    lecturer_id: PyObjectId  # To track who uploaded it
+    lecturer_id: PyObjectId 
     title: str
     description: Optional[str]
     material_type: str

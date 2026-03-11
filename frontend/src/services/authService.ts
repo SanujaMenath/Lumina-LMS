@@ -1,11 +1,12 @@
 import type { LoginCredentials, AuthResponse } from "../types/auth"
+import { API_BASE_URL } from "./api"
 
-const API = import.meta.env.VITE_BASE_URL
+
 
 export const loginService = async (
   data: LoginCredentials
 ): Promise<AuthResponse> => {
-  const res = await fetch(`${API}/auth/login`, {
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)

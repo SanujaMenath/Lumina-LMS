@@ -26,17 +26,15 @@ export interface LecturePlan {
   segments: LecturePlanSegment[];
 }
 
-// 1. Generate Assessment from PDF
 export const generateAIAssessment = async (pdfFile: File, numQuestions: number = 5): Promise<AIQuestion[]> => {
   const formData = new FormData();
   formData.append("file", pdfFile);
 
-  // Upload PDF
+
   const uploadRes = await axios.post(`${AI_API}/upload`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 
-  // Generate MCQs
   const assessmentRes = await axios.post(`${AI_API}/assessments`, {
     document_set_id: uploadRes.data.document_set_id,
     num_questions: numQuestions
@@ -45,7 +43,7 @@ export const generateAIAssessment = async (pdfFile: File, numQuestions: number =
   return assessmentRes.data.questions;
 };
 
-// 2. Generate Lecture Plan
+
 export const generateAILecturePlan = async (module_title: string, audience: string, duration_minutes: number): Promise<LecturePlan> => {
   const res = await axios.post(`${AI_API}/plan`, {
     module_title,

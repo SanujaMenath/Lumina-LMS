@@ -12,7 +12,6 @@ class StudentService:
     def _generate_student_id() -> str:
         now = datetime.now(timezone.utc)
         
-        # Safely format date as YYMMDD
         date_string = now.strftime("%y%m%d")
         date_prefix = f"st{date_string}"
         
@@ -20,7 +19,6 @@ class StudentService:
             "student_id": {"$regex": f"^{date_prefix}"}
         })
         
-        # Format the count as a 3-digit sequence (ex:- 001)
         sequence = f"{today_count + 1:03d}"
         
         return f"{date_prefix}{sequence}"

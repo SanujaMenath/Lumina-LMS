@@ -20,7 +20,7 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 const StudentAssignmentsPage = () => {
-  const { user } = useAuth(); // Get the logged-in student
+  const { user } = useAuth(); 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,7 +46,7 @@ const StudentAssignmentsPage = () => {
     loadAssignments();
   }, [user?.id]);
 
-  // Filter Logic
+
   const filteredAssignments = assignments.filter((assignment) => {
     const matchesSearch =
       assignment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,7 +56,7 @@ const StudentAssignmentsPage = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Helper function for status styling
+
   const getStatusDisplay = (status: AssignmentStatus) => {
     switch (status) {
       case "pending":
@@ -161,7 +161,7 @@ const StudentAssignmentsPage = () => {
                 key={assignment.id || `fallback-key-${index}`}
                 className="group flex flex-col sm:flex-row bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-emerald-500/5 transition-all overflow-hidden"
               >
-                {/* Status Indicator Bar (Left side) */}
+                {/* Status Indicator Bar */}
                 <div
                   className={`w-1.5 sm:w-2 shrink-0 ${statusConfig.color.split(" ")[0].replace("text-", "bg-")}`}
                 />

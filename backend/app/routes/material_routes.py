@@ -21,14 +21,12 @@ async def create_material(
     file: UploadFile = File(...),
 ):
     try:
-        # 1. Save file to disk (HTTP/File IO logic stays in the router)
         file_location = f"{UPLOAD_DIR}/{file.filename}"
         with open(file_location, "wb+") as file_object:
             shutil.copyfileobj(file.file, file_object)
 
         file_size = os.path.getsize(file_location)
 
-        # 2. Build data object
         data = MaterialCreate(
             title=title,
             course_id=course_id,
@@ -39,7 +37,6 @@ async def create_material(
             tags=[],
         )
 
-        # 3. Pass to Service Layer
         return await MaterialService.create_material(data, lecturer_id, file.filename)
         
     except Exception as e:

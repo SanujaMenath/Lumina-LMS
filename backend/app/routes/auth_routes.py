@@ -64,35 +64,6 @@ async def login(data: LoginRequest, request: Request):
     )
 
 
-# Temporary Admin Seeder (for testing)
-class AdminCreate(BaseModel):
-    full_name: str
-    email: EmailStr
-    password: str
-
-
-@router.post("/create-admin")
-def create_admin(data: AdminCreate):
-    db = get_database()
-
-    # Check email exists
-    if db["users"].find_one({"email": data.email}):
-        raise HTTPException(status_code=400, detail="Email already exists")
-
-    hashed = AuthService.hash_password(data.password)
-
-    new_admin = {
-        "full_name": data.full_name,
-        "email": data.email,
-        "password": hashed,
-        "role": "admin",
-    }
-
-    result = db["users"].insert_one(new_admin)
-
-    return {"message": "Admin created", "admin_id": str(result.inserted_id)}
-
-
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user=Depends(get_current_user)):
     return current_user

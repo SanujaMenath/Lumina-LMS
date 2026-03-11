@@ -27,7 +27,6 @@ async def create_user(payload: dict):
     return await UserService.create_user(data)
 
 
-# List users (admin only)
 @router.get(
     "/",
     response_model=List[UserResponse],
@@ -37,10 +36,9 @@ def list_users(skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=1000)
     return UserService.list_users(skip=skip, limit=limit)
 
 
-# Get single user (admin or the user themself)
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: str = Path(...), current_user=Depends(get_current_user)):
-    # allow admin or same user
+
     if current_user["role"] != "admin" and current_user["id"] != user_id:
         from fastapi import HTTPException, status
 
@@ -51,13 +49,11 @@ def get_user(user_id: str = Path(...), current_user=Depends(get_current_user)):
     return UserService.get_user_public(user_id)
 
 
-# Update own profile
 @router.put("/me", response_model=UserResponse)
 def update_me(payload: UserUpdate, current_user=Depends(get_current_user)):
     return UserService.update_user(current_user["id"], payload)
 
 
-# Change own password
 @router.put("/me/change-password")
 def change_password(
     payload: ChangePasswordPayload, current_user=Depends(get_current_user)
@@ -69,7 +65,6 @@ def change_password(
     )
 
 
-# Delete user (admin only)
 @router.delete("/{user_id}", dependencies=[Depends(require_role("admin"))])
 def delete_user(user_id: str):
     return UserService.delete_user(user_id)

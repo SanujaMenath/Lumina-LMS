@@ -44,25 +44,25 @@ export const createCourse = (payload: CreateCoursePayload) =>
     course_code: payload.code,
   });
 
-// Update course by ID
+
 export const updateCourse = (id: string, payload: CreateCoursePayload) =>
   api.put(`/courses/${id}`, {
     course_name: payload.name,
     course_code: payload.code,
   });
 
-// Delete course by ID
+
 export const deleteCourse = (id: string) => api.delete(`/courses/${id}`);
 
-// Enroll logged-in student
+
 export const enrollCourse = (courseId: string) =>
   api.post(`/courses/${courseId}/enroll`);
 
-// Assign lecturer
+
 export const assignLecturer = (courseId: string, lecturerId: string) =>
   api.post(`/courses/${courseId}/assign-lecturer`, { lecturer_id: lecturerId });
 
-// Optional: fetch all lecturers for dropdown
+
 export const getLecturers = async (): Promise<Lecturer[]> => {
   const res = await api.get("/lecturers");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

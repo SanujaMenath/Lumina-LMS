@@ -1,8 +1,6 @@
-# backend/app/routes/course_routes.py
 from fastapi import APIRouter, Depends, Path
 from typing import List
 from app.models.course import CourseCreate, CourseUpdate, StudentEnrolledCourseResponse, CourseResponse
-from app.models.enrollment import EnrollmentCreate
 from app.services.course_service import CourseService
 from app.dependencies.auth_dependencies import get_current_user
 from fastapi import HTTPException, status
@@ -48,15 +46,6 @@ def delete_course(course_id: str, current_user=Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return CourseService.delete_course(course_id)
-
-
-# Enrollment endpoints
-@router.post("/{course_id}/enroll")
-def enroll_student(course_id: str, current_user=Depends(get_current_user)):
-    if current_user["role"] != "student":
-        raise HTTPException(status_code=403, detail="Student only")
-
-    return CourseService.enroll_student(course_id, current_user["id"])
 
 
 @router.delete("/{course_id}/students/{student_id}")

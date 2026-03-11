@@ -46,16 +46,15 @@ class UserService:
         elif data.role == "student":
             StudentService._create_student_profile(user_id, data)
 
-        # A. Log the creation for the System Audit Trail
+
         await log_action(
             actor_id=current_admin_id,
-            actor_name="Admin", # Can be customized if you pass the full admin dict
+            actor_name="Admin", 
             role="admin",
             action="USER_CREATED",
             details=f"Created new {data.role} account for {data.full_name} ({data.email})"
         )
 
-        # Send a Welcome Notification to the NEW user
         await notify_user(
             recipient_id=str(user_id),
             target_role=data.role,
@@ -64,7 +63,6 @@ class UserService:
             link=f"/{data.role}/profile"
         )
         
-        # Notify all Admins that a new user was added to the system
         admins = db["users"].find({"role": "admin"})
         for admin in admins:
             await notify_user(
@@ -172,7 +170,6 @@ class UserService:
 
     @staticmethod
     def _clean_user(doc: dict) -> dict:
-        # convert _id and remove sensitive fields
         user = dict(doc)
         user["id"] = str(user["_id"])
         user.pop("_id", None)
